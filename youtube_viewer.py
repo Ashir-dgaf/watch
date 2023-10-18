@@ -29,7 +29,8 @@ import random
 import re
 import textwrap
 from concurrent.futures import ThreadPoolExecutor, wait
-from time import gmtime, sleep, strftime, time
+from time import gmtime, sleep, strftime
+from time import time as tims
 
 import psutil
 from fake_headers import Headers, browsers
@@ -333,9 +334,9 @@ def youtube_normal(driver,url):
 
     # Scroll to the end of the page and back to the top
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(5)  # Wait for page to load
+    sleep(5)  # Wait for page to load
     driver.execute_script("window.scrollTo(0, 0);")
-    time.sleep(5)  # Wait for page to load
+    sleep(5)  # Wait for page to load
 
     try:
         click_count = 0
@@ -345,19 +346,19 @@ def youtube_normal(driver,url):
             if index >= len(iframes):
                 break
             driver.execute_script(f"window.scrollTo(0, {315 * index});")  # Scroll before switching to iframe
-            time.sleep(2)
+            sleep(2)
             driver.switch_to.frame(iframes[index])
 
             if try_clicking(driver, '._18xu._9omd._3htz'):
                 click_count += 1
-                time.sleep(3)
+                sleep(3)
                 if click_count == 2:
                     click_count = 0
             
             driver.switch_to.default_content()
             index += 1
 
-        time.sleep(36000)
+        sleep(36000)
         print("Heading to next page after waiting 20 seconds")
 
     except Exception as e:
@@ -708,11 +709,17 @@ def main_viewer(proxy_type, proxy, position):
             sleep(sleep_time)
             if cancel_all:
                 raise KeyboardInterrupt
-            account = random.choice(dick)
+            try:
+                account = random.choice(dick)
 
-            driver = get_driver(background, viewports, agent, auth_required,
-                                patched_driver, proxy, proxy_type, proxy_folder,account)
-            dick.remove(account)
+                driver = get_driver(background, viewports, agent, auth_required,
+                                    patched_driver, proxy, proxy_type, proxy_folder,account)
+            
+
+                dick.remove(account)
+            except :
+                driver.quit()
+                return
 
             driver_dict[driver] = proxy_folder
 
@@ -872,7 +879,7 @@ def main():
     global cancel_all, proxy_list, total_proxies, proxies_from_api, threads, hash_config, futures, cpu_usage
 
     cancel_all = False
-    start_time = time.time()
+    start_time = tims()
     hash_config = get_hash(config_path)
 
     proxy_list = get_proxy_list()
@@ -951,8 +958,8 @@ def main():
 
                 elif refresh != 0 and category != 'r':
 
-                    if (time.time() - start_time) > refresh*60:
-                        start_time = time.time()
+                    if (tims() - start_time) > refresh*60:
+                        start_time = tims()
 
                         proxy_list_new = get_proxy_list()
                         proxy_list_new = [
@@ -985,9 +992,9 @@ if __name__ == '__main__':
     clean_exe_temp(folder='youtube_viewer')
     date_fmt = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
     cpu_usage = str(psutil.cpu_percent(1))
-    update_chrome_version()
-    check_update()
-    osname, exe_name = download_driver(patched_drivers=patched_drivers)
+    current_directory = os.getcwd()
+    opx = download_driver(current_directory)
+    osname, exe_name = "win" , ".exe"
     create_database(database=DATABASE, database_backup=DATABASE_BACKUP)
 
     if osname == 'win':
@@ -1001,24 +1008,6 @@ if __name__ == '__main__':
         with open(config_path, 'r', encoding='utf-8-sig') as openfile:
             config = json.load(openfile)
 
-        if len(config) == 11:
-            print(json.dumps(config, indent=4))
-            print(bcolors.OKCYAN + 'Config file exists! Program will start automatically after 20 seconds...' + bcolors.ENDC)
-            print(bcolors.FAIL + 'If you want to create a new config file PRESS CTRL+C within 20 seconds!' + bcolors.ENDC)
-            start = time.time() + 20
-            try:
-                i = 0
-                while i < 24:
-                    print(bcolors.OKBLUE + f"{start - time.time():.0f} seconds remaining " +
-                          animation[i % len(animation)] + bcolors.ENDC, end="\r")
-                    i += 1
-                    sleep(0.2)
-                print('\n')
-            except KeyboardInterrupt:
-                create_config(config_path=config_path)
-        else:
-            print(bcolors.FAIL + 'Previous config file is not compatible with the latest script! Create a new one...' + bcolors.ENDC)
-            create_config(config_path=config_path)
     else:
         create_config(config_path=config_path)
 
