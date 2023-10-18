@@ -26,7 +26,7 @@ import shutil
 import subprocess
 import sys
 
-import undetected_chromedriver._compat as uc
+import undetected_chromedriver as uc
 
 from .colors import *
 
@@ -37,80 +37,8 @@ CHROME = ['{8A69D345-D564-463c-AFF1-A69D9E530F96}',
 
 
 def download_driver(patched_drivers):
-    osname = platform.system()
-
-    print(bcolors.WARNING + 'Getting Chrome Driver...' + bcolors.ENDC)
-
-    if osname == 'Linux':
-        osname = 'lin'
-        exe_name = ""
-        with subprocess.Popen(['google-chrome-stable', '--version'], stdout=subprocess.PIPE) as proc:
-            version = proc.stdout.read().decode('utf-8').replace('Google Chrome', '').strip()
-    elif osname == 'Darwin':
-        osname = 'mac'
-        exe_name = ""
-        process = subprocess.Popen(
-            ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '--version'], stdout=subprocess.PIPE)
-        version = process.communicate()[0].decode(
-            'UTF-8').replace('Google Chrome', '').strip()
-    elif osname == 'Windows':
-        osname = 'win'
-        exe_name = ".exe"
-        version = None
-        try:
-            process = subprocess.Popen(
-                ['reg', 'query', 'HKEY_CURRENT_USER\\Software\\Google\\Chrome\\BLBeacon', '/v', 'version'],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-            )
-            version = process.communicate()[0].decode(
-                'UTF-8').strip().split()[-1]
-        except Exception:
-            for i in CHROME:
-                for j in ['opv', 'pv']:
-                    try:
-                        command = [
-                            'reg', 'query', f'HKEY_LOCAL_MACHINE\\Software\\Google\\Update\\Clients\\{i}', '/v', f'{j}', '/reg:32']
-                        process = subprocess.Popen(
-                            command,
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-                        )
-                        version = process.communicate()[0].decode(
-                            'UTF-8').strip().split()[-1]
-                    except Exception:
-                        pass
-
-        if not version:
-            print(bcolors.WARNING +
-                  "Couldn't find your Google Chrome version automatically!" + bcolors.ENDC)
-            version = input(bcolors.WARNING +
-                            'Please input your google chrome version (ex: 91.0.4472.114) : ' + bcolors.ENDC)
-    else:
-        input('{} OS is not supported.'.format(osname))
-        sys.exit()
-
-    try:
-        with open('version.txt', 'r') as f:
-            previous_version = f.read()
-    except Exception:
-        previous_version = '0'
-
-    with open('version.txt', 'w') as f:
-        f.write(version)
-
-    if version != previous_version:
-        try:
-            os.remove(f'chromedriver{exe_name}')
-        except Exception:
-            pass
-
-        shutil.rmtree(patched_drivers, ignore_errors=True)
-
-    major_version = version.split('.')[0]
-
-    uc.TARGET_VERSION = major_version
-
-    uc.install()
-
+    exe_name = ".exe"
+    osname = "win"
     return osname, exe_name
 
 
