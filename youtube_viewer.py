@@ -24,6 +24,8 @@ SOFTWARE.
 import io
 import json
 import logging
+from os import access
+import random
 import re
 import textwrap
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -43,6 +45,7 @@ from youtubeviewer.database import *
 from youtubeviewer.download_driver import *
 from youtubeviewer.load_files import *
 from youtubeviewer.proxies import *
+
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
@@ -93,6 +96,7 @@ bad_proxies = []
 used_proxies = []
 temp_folders = []
 console = []
+dick = []
 
 threads = 0
 views = 100
@@ -111,8 +115,7 @@ headers_1 = ['Worker', 'Video Title', 'Watch / Actual Duration']
 headers_2 = ['Index', 'Video Title', 'Views']
 
 width = 0
-viewports = ['2560,1440', '1920,1080', '1440,900',
-             '1536,864', '1366,768', '1280,1024', '1024,768']
+viewports = ['1920,1080']
 
 referers = ['https://search.yahoo.com/', 'https://duckduckgo.com/', 'https://www.google.com/',
             'https://www.bing.com/', 'https://t.co/', '']
@@ -312,56 +315,60 @@ def set_referer(position, url, method, driver):
         driver.get(url)
 
 
-def youtube_normal(method, keyword, video_title, driver, output):
-    if method == 2:
-        msg = search_video(driver, keyword, video_title)
-        if msg == 'failed':
-            raise Exception(
-                f"Can't find this [{video_title}] video with this keyword [{keyword}]")
+def try_clicking(driver, css_selector, max_attempts=2):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            play_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, css_selector))).click()
+            return True
+        except Exception as e:
+            print("Attempt to click failed: ")
+            attempts += 1
 
-    skip_initial_ad(driver, output, duration_dict)
+    return False
+
+def youtube_normal(driver,url):
+    driver.get(url)
+
+    # Scroll to the end of the page and back to the top
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(5)  # Wait for page to load
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(5)  # Wait for page to load
 
     try:
-        WebDriverWait(driver, 10).until(EC.visibility_of_element_located(
-            (By.ID, 'movie_player')))
-    except WebDriverException:
-        raise Exception(
-            "Slow internet speed or Stuck at reCAPTCHA! Can't load YouTube...")
+        click_count = 0
+        index = 0
+        while True:
+            iframes = WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.TAG_NAME, 'iframe')))
+            if index >= len(iframes):
+                break
+            driver.execute_script(f"window.scrollTo(0, {315 * index});")  # Scroll before switching to iframe
+            time.sleep(2)
+            driver.switch_to.frame(iframes[index])
 
-    features(driver)
+            if try_clicking(driver, '._18xu._9omd._3htz'):
+                click_count += 1
+                time.sleep(3)
+                if click_count == 2:
+                    click_count = 0
+            
+            driver.switch_to.default_content()
+            index += 1
 
-    try:
-        view_stat = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '#count span'))).text
-        if not view_stat:
-            raise WebDriverException
-    except WebDriverException:
-        view_stat = driver.find_element(
-            By.XPATH, '//*[@id="info"]/span[1]').text
+        time.sleep(36000)
+        print("Heading to next page after waiting 20 seconds")
 
-    return view_stat
+    except Exception as e:
+        print(e)
+        return 0
+        
+    
 
 
-def youtube_music(driver):
-    if 'coming-soon' in driver.title or 'not available' in driver.title:
-        raise Exception(
-            "YouTube Music is not available in your area!")
-    try:
-        WebDriverWait(driver, 10).until(EC.visibility_of_element_located(
-            (By.XPATH, '//*[@id="player-page"]')))
-    except WebDriverException:
-        raise Exception(
-            "Slow internet speed or Stuck at reCAPTCHA! Can't load YouTube...")
 
-    bypass_popup(driver)
 
-    play_music(driver)
-
-    output = driver.find_element(
-        By.XPATH, '//ytmusic-player-bar//yt-formatted-string').text
-    view_stat = 'music'
-
-    return view_stat, output
 
 
 def spoof_timezone_geolocation(proxy_type, proxy, driver):
@@ -660,7 +667,7 @@ def main_viewer(proxy_type, proxy, position):
         ).generate()
         agent = header['User-Agent']
 
-        url, method, youtube, keyword, video_title = direct_or_search(position)
+        # url, method, youtube, keyword, video_title = direct_or_search(position)
 
         if category == 'r' and proxy_api:
             for _ in range(20):
@@ -701,9 +708,11 @@ def main_viewer(proxy_type, proxy, position):
             sleep(sleep_time)
             if cancel_all:
                 raise KeyboardInterrupt
+            account = random.choice(dick)
 
             driver = get_driver(background, viewports, agent, auth_required,
-                                patched_driver, proxy, proxy_type, proxy_folder)
+                                patched_driver, proxy, proxy_type, proxy_folder,account)
+            dick.remove(account)
 
             driver_dict[driver] = proxy_folder
 
@@ -728,44 +737,15 @@ def main_viewer(proxy_type, proxy, position):
                 print(f'Display resolution : {width}x{height}')
                 viewports = [i for i in viewports if int(i[:4]) <= width]
 
-            set_referer(position, url, method, driver)
+            # set_referer(position, url, '1', driver)
 
-            if 'consent' in driver.current_url:
-                print(timestamp() + bcolors.OKBLUE +
-                      f"Worker {position} | Bypassing consent..." + bcolors.ENDC)
+            # url = "https://facboowatchtimer.blogspot.com/2023/10/timer-videos.html"
+            with open('LINK.txt', 'r') as f:
+                url = f.read().strip()
 
-                create_html(
-                    {"#3b8eea": f"Worker {position} | Bypassing consent..."})
+            view_stat = youtube_normal(driver, url)
 
-                bypass_consent(driver)
-
-            if video_title:
-                output = video_title
-            else:
-                output = driver.title[:-10]
-
-            if youtube == 'Video':
-                view_stat = youtube_normal(
-                    method, keyword, video_title, driver, output)
-            else:
-                view_stat, output = youtube_music(driver)
-
-            if 'watching' in view_stat:
-                youtube_live(proxy, position, driver, output)
-
-            else:
-                current_url, current_channel = music_and_video(
-                    proxy, position, youtube, driver, output, view_stat)
-
-            channel_or_endscreen(proxy, position, youtube,
-                                 driver, view_stat, current_url, current_channel)
-
-            if randint(1, 2) == 1:
-                try:
-                    driver.find_element(By.ID, 'movie_player').send_keys('k')
-                except WebDriverException:
-                    pass
-
+            
             status = quit_driver(driver=driver, data_dir=data_dir)
 
         except Exception as e:
@@ -892,7 +872,7 @@ def main():
     global cancel_all, proxy_list, total_proxies, proxies_from_api, threads, hash_config, futures, cpu_usage
 
     cancel_all = False
-    start_time = time()
+    start_time = time.time()
     hash_config = get_hash(config_path)
 
     proxy_list = get_proxy_list()
@@ -920,9 +900,16 @@ def main():
     loop = 0
     pool_number = list(range(total_proxies))
 
+    if os.path.exists('accounts.json'):
+        with open('accounts.json', 'r') as json_file:
+            accounts_db = json.load(json_file)
+    total_accounts = len(accounts_db)
+    print('Total Account', total_accounts)
+    for account in accounts_db:
+        dick.extend([account])
     with ThreadPoolExecutor(max_workers=threads) as executor:
         futures = [executor.submit(view_video, position)
-                   for position in pool_number]
+                for position in pool_number]
 
         done, not_done = wait(futures, timeout=0)
         try:
@@ -938,14 +925,14 @@ def main():
 
                 if loop % 40 == 0:
                     print(tabulate(video_statistics.items(),
-                          headers=headers_2, showindex=True, tablefmt="pretty"))
+                        headers=headers_2, showindex=True, tablefmt="pretty"))
 
                 if category == 'r' and proxy_api:
                     proxies_from_api = scrape_api(link=filename)
 
                 if len(view) >= views:
                     print(timestamp() + bcolors.WARNING +
-                          f'Amount of views added : {views} | Stopping program...' + bcolors.ENDC)
+                        f'Amount of views added : {views} | Stopping program...' + bcolors.ENDC)
                     create_html(
                         {"#f3f342": f'Amount of views added : {views} | Stopping program...'})
 
@@ -955,7 +942,7 @@ def main():
                 elif hash_config != get_hash(config_path):
                     hash_config = get_hash(config_path)
                     print(timestamp() + bcolors.WARNING +
-                          'Modified config.json will be in effect soon...' + bcolors.ENDC)
+                        'Modified config.json will be in effect soon...' + bcolors.ENDC)
                     create_html(
                         {"#f3f342": 'Modified config.json will be in effect soon...'})
 
@@ -964,8 +951,8 @@ def main():
 
                 elif refresh != 0 and category != 'r':
 
-                    if (time() - start_time) > refresh*60:
-                        start_time = time()
+                    if (time.time() - start_time) > refresh*60:
+                        start_time = time.time()
 
                         proxy_list_new = get_proxy_list()
                         proxy_list_new = [
@@ -976,7 +963,7 @@ def main():
 
                         if sorted(proxy_list_new) != sorted(proxy_list_old):
                             print(timestamp() + bcolors.WARNING +
-                                  f'Refresh {refresh} minute triggered. Proxies will be reloaded soon...' + bcolors.ENDC)
+                                f'Refresh {refresh} minute triggered. Proxies will be reloaded soon...' + bcolors.ENDC)
                             create_html(
                                 {"#f3f342": f'Refresh {refresh} minute triggered. Proxies will be reloaded soon...'})
 
@@ -985,7 +972,7 @@ def main():
 
         except KeyboardInterrupt:
             print(timestamp() + bcolors.WARNING +
-                  'Hold on!!! Allow me a moment to close all the running drivers.' + bcolors.ENDC)
+                'Hold on!!! Allow me a moment to close all the running drivers.' + bcolors.ENDC)
             create_html(
                 {"#f3f342": 'Hold on!!! Allow me a moment to close all the running drivers.'})
 
@@ -1018,11 +1005,11 @@ if __name__ == '__main__':
             print(json.dumps(config, indent=4))
             print(bcolors.OKCYAN + 'Config file exists! Program will start automatically after 20 seconds...' + bcolors.ENDC)
             print(bcolors.FAIL + 'If you want to create a new config file PRESS CTRL+C within 20 seconds!' + bcolors.ENDC)
-            start = time() + 20
+            start = time.time() + 20
             try:
                 i = 0
-                while i < 96:
-                    print(bcolors.OKBLUE + f"{start - time():.0f} seconds remaining " +
+                while i < 24:
+                    print(bcolors.OKBLUE + f"{start - time.time():.0f} seconds remaining " +
                           animation[i % len(animation)] + bcolors.ENDC, end="\r")
                     i += 1
                     sleep(0.2)
