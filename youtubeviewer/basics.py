@@ -21,6 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+from ast import Try
 import os,shutil,time,json
 from glob import glob
 
@@ -173,12 +174,16 @@ def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_t
             print(f"ERROR LOGING IN ACCOUNT {name_acc}")
             return
         else:
-            print("SUCCESS")
-            time.sleep(3)
-            # search_p(driver)
+            if "checkpoint" in driver.current_url():
+                print("Account is Locked")
+                return driver , False
+            else:
+                print("SUCCESS")
+                time.sleep(3)
+                # search_p(driver)
+                return driver, True
             
-
-        return driver
+            
     except Exception as e:
         print(e)
 
