@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import os
+import os,shutil,time,json
 from glob import glob
 
 from .features import *
@@ -93,50 +93,94 @@ chrome.webRequest.onAuthRequired.addListener(
         fh.write(background_js)
 
 
-def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_type, proxy_folder):
-    options = webdriver.ChromeOptions()
-    options.headless = background
-    if viewports:
-        options.add_argument(f"--window-size={choice(viewports)}")
-    options.add_argument("--log-level=3")
-    options.add_experimental_option(
-        "excludeSwitches", ["enable-automation", "enable-logging"])
-    options.add_experimental_option('useAutomationExtension', False)
-    prefs = {"intl.accept_languages": 'en_US,en',
-             "credentials_enable_service": False,
-             "profile.password_manager_enabled": False,
-             "profile.default_content_setting_values.notifications": 2,
-             "download_restrictions": 3}
-    options.add_experimental_option("prefs", prefs)
-    options.add_experimental_option('extensionLoadTimeout', 120000)
-    options.add_argument(f"user-agent={agent}")
-    options.add_argument("--mute-audio")
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-features=UserAgentClientHint')
-    options.add_argument("--disable-web-security")
-    webdriver.DesiredCapabilities.CHROME['loggingPrefs'] = {
-        'driver': 'OFF', 'server': 'OFF', 'browser': 'OFF'}
+def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_type, proxy_folder,account):
+    def is_valid(form_cookies,driver):
+        # cookies = json.load(form_cookies)  # Load saved cookies
+        for cookie in form_cookies:
+            driver.add_cookie(cookie)
+        driver.refresh()
+        time.sleep(1)
+        cookie_exists = any(cookie['name'] == 'xs' for cookie in driver.get_cookies())
+        if cookie_exists:
+            print('Logged in Succesfully')
+            return True
+        else : return False
+    try:
+        dir_name = os.path.splitext(path)[0]
+        if os.path.exists(dir_name):
+            # If it does, delete it
+            shutil.rmtree(dir_name)
 
-    if not background:
-        options.add_extension(WEBRTC)
-        options.add_extension(FINGERPRINT)
-        options.add_extension(ACTIVE)
+        # Whether it existed or not, create a new directory
+        os.makedirs(dir_name)
+        options = webdriver.ChromeOptions()
+        options.headless = background
+        if viewports:
+            options.add_argument(f"--window-size={choice(viewports)}")
+        options.add_argument("--log-level=3")
+        options.add_experimental_option(
+            "excludeSwitches", ["enable-automation", "enable-logging"])
+        options.add_experimental_option('useAutomationExtension', False)
+        prefs = {"intl.accept_languages": 'en_US,en',
+                "credentials_enable_service": False,
+                "profile.password_manager_enabled": False,
+                "profile.default_content_setting_values.notifications": 2,
+                "download_restrictions": 3}
+        options.add_experimental_option("prefs", prefs)
+        options.add_experimental_option('extensionLoadTimeout', 120000)
+        options.add_argument(f"user-agent={agent}")
+        options.add_argument("--disk-cache-dir="+dir_name)
+        options.add_argument("--user-data-dir="+dir_name)
+        options.add_argument("--mute-audio")
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-features=UserAgentClientHint')
+        options.add_argument("--disable-web-security")
+        options.set_capability('goog:loggingPrefs', { 'driver': 'OFF', 'server': 'OFF', 'browser': 'OFF' })
 
-        if CUSTOM_EXTENSIONS:
-            for extension in CUSTOM_EXTENSIONS:
-                options.add_extension(extension)
+        if not background:
+            options.add_extension(WEBRTC)
+            options.add_extension(FINGERPRINT)
+            options.add_extension(ACTIVE)
 
-    if auth_required:
-        create_proxy_folder(proxy, proxy_folder)
-        options.add_argument(f"--load-extension={proxy_folder}")
-    else:
-        options.add_argument(f'--proxy-server={proxy_type}://{proxy}')
+            if CUSTOM_EXTENSIONS:
+                for extension in CUSTOM_EXTENSIONS:
+                    options.add_extension(extension)
 
-    service = Service(executable_path=path)
-    driver = webdriver.Chrome(service=service, options=options)
+        if auth_required:
+            create_proxy_folder(proxy, proxy_folder)
+            options.add_argument(f"--load-extension={proxy_folder}")
+        else:
+            options.add_argument(f'--proxy-server={proxy_type}://{proxy}')
 
-    return driver
+        service = Service(executable_path=path)
+        driver = webdriver.Chrome(service=service, options=options)
+        if os.path.exists('accounts.json'):
+            with open('accounts.json', 'r') as json_file:
+                accounts_db = json.load(json_file)
+        driver.get("https://www.facebook.com")
+        name_acc = accounts_db[account]["Name"]
+        form_cookies = accounts_db[account]["cookies"]
+        driver.delete_all_cookies()  # Delete all existing cookies
+        attempt_count = 0
+        while attempt_count < 2:  # Changed condition here
+            if is_valid(form_cookies,driver):
+                break
+            else:
+                attempt_count+=1
+            print(f"Attempt : {attempt_count}")
+        if attempt_count >= 2:  # Adjusted condition here
+            print(f"ERROR LOGING IN ACCOUNT {name_acc}")
+            return
+        else:
+            print("SUCCESS")
+            time.sleep(3)
+            # search_p(driver)
+            
+
+        return driver
+    except Exception as e:
+        print(e)
 
 
 def play_video(driver):
