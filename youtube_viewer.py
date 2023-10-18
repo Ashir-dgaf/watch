@@ -712,13 +712,15 @@ def main_viewer(proxy_type, proxy, position):
             try:
                 account = random.choice(dick)
 
-                driver = get_driver(background, viewports, agent, auth_required,
+                driver ,status= get_driver(background, viewports, agent, auth_required,
                                     patched_driver, proxy, proxy_type, proxy_folder,account)
-            
+                if not status :
+                    driver.quit()
+                    
 
-                dick.remove(account)
+
+                
             except :
-                driver.quit()
                 return
 
             driver_dict[driver] = proxy_folder
@@ -749,8 +751,13 @@ def main_viewer(proxy_type, proxy, position):
             # url = "https://facboowatchtimer.blogspot.com/2023/10/timer-videos.html"
             with open('LINK.txt', 'r') as f:
                 url = f.read().strip()
-
-            view_stat = youtube_normal(driver, url)
+            dick.remove(account)
+            try:
+                view_stat = youtube_normal(driver, url)
+                dick.extend([account])
+            except Exception as e:
+                print(e)
+                dick.extend([account])
 
             
             status = quit_driver(driver=driver, data_dir=data_dir)
