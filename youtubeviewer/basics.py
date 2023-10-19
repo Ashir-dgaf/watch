@@ -108,6 +108,7 @@ def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_t
         else : return False
     try:
         dir_name = os.path.splitext(path)[0]
+        dir_name = dir_name + str(int(time.time()))
         if os.path.exists(dir_name):
             # If it does, delete it
             shutil.rmtree(dir_name)
@@ -172,9 +173,9 @@ def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_t
             print(f"Attempt : {attempt_count}")
         if attempt_count >= 2:  # Adjusted condition here
             print(f"ERROR LOGING IN ACCOUNT {name_acc}")
-            return
+            return driver,False
         else:
-            if "checkpoint" in driver.current_url():
+            if "checkpoint" in driver.current_url:
                 print("Account is Locked")
                 return driver , False
             else:
