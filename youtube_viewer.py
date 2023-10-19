@@ -716,11 +716,10 @@ def main_viewer(proxy_type, proxy, position):
                                     patched_driver, proxy, proxy_type, proxy_folder,account)
                 if not status :
                     driver.quit()
+                    dick.remove(account)
                     
-
-
-                
-            except :
+            except Exception as e:
+                print(f"ERROR AT LOGIN {e}")
                 return
 
             driver_dict[driver] = proxy_folder
@@ -756,7 +755,7 @@ def main_viewer(proxy_type, proxy, position):
                 view_stat = youtube_normal(driver, url)
                 dick.extend([account])
             except Exception as e:
-                print(e)
+                print(f'ERROR HERE{e}')
                 dick.extend([account])
 
             
