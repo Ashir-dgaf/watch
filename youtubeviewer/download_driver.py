@@ -74,7 +74,7 @@ def find_compatible_version(target_version,api_response,platform_arch):
 def get_chrome_version():
     try:
         if sys.platform.startswith('win'):
-            command = 'reg query "HKEY_CURRENT_USER\\Software\\Google\\Chrome\\BLBeacon" /v version'
+            command = 'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Google\\Update\\Clients\\{8A69D345-D564-463c-AFF1-A69D9E530F96}" /v pv'
         elif sys.platform.startswith('darwin'):
             command = '/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --version'
         else:
@@ -205,7 +205,6 @@ def download_driver(current_directory):
         
     else:
         save_chrome_version('0',current_directory)
-        return check_update(current_directory)
 
 
 
