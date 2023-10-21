@@ -720,6 +720,8 @@ def main():
     with ThreadPoolExecutor(max_workers=threads) as executor:
         futures = [executor.submit(view_video, position)
                 for position in pool_number]
+        
+        sleep(120)
 
         done, not_done = wait(futures, timeout=0)
         try:
