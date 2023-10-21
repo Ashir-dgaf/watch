@@ -149,11 +149,11 @@ def get_driver(background, viewports, agent, auth_required, path, proxy, proxy_t
                 for extension in CUSTOM_EXTENSIONS:
                     options.add_extension(extension)
 
-        if auth_required:
-            create_proxy_folder(proxy, proxy_folder)
-            options.add_argument(f"--load-extension={proxy_folder}")
-        else:
-            options.add_argument(f'--proxy-server={proxy_type}://{proxy}')
+        # if auth_required:
+        #     create_proxy_folder(proxy, proxy_folder)
+        #     options.add_argument(f"--load-extension={proxy_folder}")
+        # else:
+        #     options.add_argument(f'--proxy-server={proxy_type}://{proxy}')
 
         service = Service(executable_path=path)
         driver = webdriver.Chrome(service=service, options=options)
